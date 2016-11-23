@@ -1,3 +1,6 @@
+#ifndef BIGNUMBER_H
+#define BIGNUMBER_H
+
 #include <iostream>
 #include <string>
 #include <array>
@@ -585,3 +588,5 @@ namespace Big_Number
 	}
 
 } //end of namespace Big_Number
+
+#endif
