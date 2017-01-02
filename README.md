@@ -1,5 +1,5 @@
 # BigNumber
-BigNumber implementation in C++11
+Fixed-length BigNumber implementation in C++11
 
 This is an implementation of BigNumber in C++11 using a fixed length array to hold the digits. It supports the same set of operations as the built-in `int` type. These operations behave similarly to their built-in counterparts.
 
