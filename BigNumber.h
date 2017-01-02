@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <type_traits>
+#include <sstream>
 
 namespace Big_Number
 {
@@ -33,7 +34,7 @@ namespace Big_Number
 	template <std::size_t k, typename = typename std::enable_if<k != 0>::type>
 	class BigNumber
 	{
-		std::array<unsigned, k> digits;
+		std::array<unsigned char, k> digits;
 		std::size_t end;
 		bool sign;
 
@@ -44,11 +45,13 @@ namespace Big_Number
 			BigNumber(const char* ca): BigNumber(std::string(ca)) {}
 			BigNumber(int n): BigNumber(std::to_string(n)) {} //This is needed, because without it, 0 cannot be automatically converted to a BigNumber.
 			BigNumber(long long int n): BigNumber(std::to_string(n)) {}
+			BigNumber(const BigNumber&);
 			
-			unsigned& operator[](std::size_t i) { return digits[i]; }
-			const unsigned& operator[](std::size_t i) const { return digits[i]; }
-			unsigned& at(std::size_t);
-			const unsigned& at(std::size_t) const;
+			unsigned char& operator[](std::size_t i) { return digits[i]; }
+			const unsigned char& operator[](std::size_t i) const { return digits[i]; }
+			unsigned char& at(std::size_t);
+			const unsigned char& at(std::size_t) const;
+			BigNumber& operator=(const BigNumber&);
 			BigNumber& operator+=(const BigNumber&);
 			BigNumber& operator<<=(std::size_t);
 			BigNumber& operator*=(const BigNumber&);
@@ -68,7 +71,7 @@ namespace Big_Number
 			static const BigNumber big1;
 			static const BigNumber big2;
 
-			BigNumber mult_digit(unsigned) const; //accepts only a digit.
+			BigNumber mult_digit(unsigned char) const; //accepts only a digit.
 			void discard_leading_zeros();
 
 		//Friends are defined here to enable users of the class to write expressions like 'BigNumber<20>("3849") + 67'.
@@ -157,6 +160,13 @@ namespace Big_Number
 			return !is_even(bn);
 		}
 
+		friend BigNumber operator^(const BigNumber& lhs, const BigNumber& rhs)
+		{
+			BigNumber ret = lhs;
+			ret ^= rhs;
+			return ret;
+		}
+
 		friend bool operator<(const BigNumber& lhs, const BigNumber& rhs)
 		{
 			if (!lhs.sign && rhs.sign)
@@ -183,13 +193,6 @@ namespace Big_Number
 					return false;
 				}
 			}
-		}
-
-		friend BigNumber operator^(const BigNumber& lhs, const BigNumber& rhs)
-		{
-			BigNumber ret = lhs;
-			ret ^= rhs;
-			return ret;
 		}
 
 		friend bool operator>(const BigNumber& lhs, const BigNumber& rhs)
@@ -222,7 +225,7 @@ namespace Big_Number
 			if (!bn.sign)
 				os<<'-';
 			for (std::size_t i = bn.end; i-- != 0;)
-				os<<bn.digits[i];
+				os<<(unsigned)(bn.digits[i]);
 			return os;
 		}
 
@@ -248,13 +251,12 @@ namespace Big_Number
 	const BigNumber<k, T> BigNumber<k, T>::big2("2");
 
 	template <std::size_t k, typename T>
-	BigNumber<k, T>::BigNumber(const std::string& s)
+	BigNumber<k, T>::BigNumber(const std::string& s): sign(true)
 	{
 		if (s.empty() || (s.size() == 1 && (s[0] == '-' || s[0] == '+')))
 		{
 			end = 1;
 			digits[0] = 0;
-			sign = true;
 			return;
 		}
 		std::size_t pos = 0;
@@ -267,14 +269,10 @@ namespace Big_Number
 		else if (s[0] == '+')
 		{
 			end = s.size() - 1;
-			sign = true;
 			pos = 1;
 		}
 		else
-		{
 			end = s.size();
-			sign = true;
-		}
 		if (end > size)
 			throw VeryLongString("Error: Input string contains more than " + std::to_string(size) + " digits.");
 		for (std::size_t i = s.size(); i-- != pos; )
@@ -283,7 +281,13 @@ namespace Big_Number
 	}
 
 	template <std::size_t k, typename T>
-	inline unsigned& BigNumber<k, T>::at(std::size_t i)
+	inline BigNumber<k, T>::BigNumber(const BigNumber& rhs): end(rhs.end), sign(rhs.sign)
+	{
+		std::copy(rhs.digits.begin(), rhs.digits.begin() + rhs.end, digits.begin());
+	}
+
+	template <std::size_t k, typename T>
+	inline unsigned char& BigNumber<k, T>::at(std::size_t i)
 	{
 		if (i >= end)
 			throw std::out_of_range("Error: Index " + std::to_string(i) + " is larger than the largest possible index for this number (" + std::to_string(end - 1) + ").");
@@ -291,11 +295,23 @@ namespace Big_Number
 	}
 
 	template <std::size_t k, typename T>
-	inline const unsigned& BigNumber<k, T>::at(std::size_t i) const
+	inline const unsigned char& BigNumber<k, T>::at(std::size_t i) const
 	{
 		if (i >= end)
 			throw std::out_of_range("Error: Index " + std::to_string(i) + " is larger than the largest possible index for this number (" + std::to_string(end - 1) + ").");
 		return digits[i];
+	}
+
+	template <std::size_t k, typename T>
+	BigNumber<k, T>& BigNumber<k, T>::operator=(const BigNumber& rhs)
+	{
+		if (&rhs != this)
+		{
+			std::copy(rhs.digits.begin(), rhs.digits.begin() + rhs.end, digits.begin());
+			end = rhs.end;
+			sign = rhs.sign;
+		}
+		return *this;
 	}
 
 	template <std::size_t k, typename T>
@@ -303,14 +319,14 @@ namespace Big_Number
 	{
 		if (this->sign != rhs.sign)
 		{
-			if (*this >= rhs)
+			if (this->sign)
 				*this -= -rhs;
 			else
 				*this = rhs - -*this;
 		}
 		else
 		{
-			int carry = 0;
+			unsigned char carry = 0;
 			for (std::size_t i = 0; i < end && i < rhs.end; ++i)
 			{
 				digits[i] = digits[i] + rhs.digits[i] + carry;
@@ -370,17 +386,15 @@ namespace Big_Number
 	BigNumber<k, T>& BigNumber<k, T>::operator*=(const BigNumber& rhs)
 	{
 		BigNumber product;
-		BigNumber rhs_pos = abs(rhs);
 		bool initial_this_sign = this->sign;
 		bool initial_rhs_sign = rhs.sign; //because rhs can be *this!
-		this->sign = true;
-		for (std::size_t i = rhs_pos.end; i-- != 0; )
+		for (std::size_t i = rhs.end; i-- != 0; )
 		{
 			product <<= 1;
-			product += this->mult_digit(rhs_pos.digits[i]);
+			product += this->mult_digit(rhs.digits[i]);
 		}
 		*this = std::move(product);
-		if (initial_rhs_sign != initial_this_sign)
+		if (initial_rhs_sign != initial_this_sign && *this != big0)
 			this->sign = false;
 		return *this;
 	}
@@ -403,18 +417,21 @@ namespace Big_Number
 	{
 		if (rhs == big0)
 			throw DivisionByZero("Error: Division by zero.");
-		if (abs(*this) < abs(rhs))
-			return *this = big0;
 		bool initial_this_sign = this->sign;
 		bool initial_rhs_sign = rhs.sign; //because rhs can be *this!
-		this->sign = true;
-		std::size_t initial_shift = end - rhs.end;
-		BigNumber denom = abs(rhs) << initial_shift;
+		std::size_t initial_shift;
+		if (end <= rhs.end)
+			initial_shift = 0;
+		else
+			initial_shift = end - rhs.end;
+		BigNumber denom = rhs << initial_shift;
+		denom.sign = true;
 		BigNumber num = std::move(*this);
+		num.sign = true;
 		BigNumber q;
 		for (int i = 0; i <= initial_shift; ++i)
 		{
-			unsigned q_digit = 0;
+			unsigned char q_digit = 0;
 			while (num >= denom)
 			{
 				num -= denom;
@@ -425,7 +442,7 @@ namespace Big_Number
 			denom >>= 1;
 		}
 		*this = std::move(q);
-		if (initial_this_sign != initial_rhs_sign)
+		if (initial_this_sign != initial_rhs_sign && *this != big0)
 			this->sign = false;
 		return *this;
 	}
@@ -436,7 +453,10 @@ namespace Big_Number
 		if (*this == big0)
 			return big0;
 		BigNumber ret = *this;
-		ret.sign = 1 - ret.sign;
+		if (ret.sign)
+			ret.sign = false;
+		else
+			ret.sign = true;
 		return ret;
 	}
 
@@ -486,17 +506,19 @@ namespace Big_Number
 			bool borrow = false;
 			for (std::size_t i = 0; i < ma->end; ++i)
 			{
-				int sub = borrow;
+				unsigned char sub = borrow;
 				if (i < mi->end)
 					sub += mi->digits[i];
 				if (sub > ma->digits[i])
+				{
 					borrow = true;
-				else
-					borrow = false;
-				if (borrow)
 					this->digits[i] = 10 + ma->digits[i] - sub;
+				}
 				else
+				{
+					borrow = false;
 					this->digits[i] = ma->digits[i] - sub;
+				}
 			}
 			this->end = ma->end;
 			discard_leading_zeros();
@@ -555,12 +577,13 @@ namespace Big_Number
 	}
 
 	template <std::size_t k, typename T>
-	BigNumber<k, T> BigNumber<k, T>::mult_digit(unsigned n) const //n should belong to [0, 9]
+	BigNumber<k, T> BigNumber<k, T>::mult_digit(unsigned char n) const //n should belong to [0, 9]
 	{
 		if (n == 0)
 			return big0;
 		BigNumber ret = *this;
-		int carry = 0;
+		ret.sign = true;
+		unsigned char carry = 0;
 		for (std::size_t i = 0; i < end; ++i)
 		{
 			ret.digits[i] = n * digits[i] + carry;
@@ -588,5 +611,25 @@ namespace Big_Number
 	}
 
 } //end of namespace Big_Number
+
+namespace std
+{
+	template <size_t k, typename T>
+	struct hash<Big_Number::BigNumber<k, T>>
+	{
+		typedef size_t result_type;
+		typedef Big_Number::BigNumber<k, T> argument_type;
+
+		size_t operator()(const Big_Number::BigNumber<k, T>&) const;
+	};
+
+	template <size_t k, typename T>
+	size_t hash<Big_Number::BigNumber<k, T>>::operator()(const Big_Number::BigNumber<k, T>& number) const
+	{
+		ostringstream oss;
+		oss << number;
+		return hash<string>()(oss.str());
+	}
+}
 
 #endif
