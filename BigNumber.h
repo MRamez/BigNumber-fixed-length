@@ -43,8 +43,15 @@ namespace Big_Number
 			BigNumber(): end(1), sign(true) { digits[0] = 0; }
 			BigNumber(const std::string&);
 			BigNumber(const char* ca): BigNumber(std::string(ca)) {}
-			BigNumber(int n): BigNumber(std::to_string(n)) {} //This is needed, because without it, 0 cannot be automatically converted to a BigNumber.
-			BigNumber(long long int n): BigNumber(std::to_string(n)) {}
+			BigNumber(int n): BigNumber(std::to_string(n)) {} //This is required for "BigNumber(0)"
+			/*All of the following integral constructors are required (not just one of them) because otherwise calls to BigNumber constructor with
+			certain integral types would have been ambiguous.*/
+			BigNumber(unsigned n): BigNumber(std::to_string(n)) {}
+			BigNumber(long n): BigNumber(std::to_string(n)) {}
+			BigNumber(unsigned long n): BigNumber(std::to_string(n)) {}
+			BigNumber(long long n): BigNumber(std::to_string(n)) {}
+			BigNumber(unsigned long long n): BigNumber(std::to_string(n)) {}
+
 			BigNumber(const BigNumber&);
 			
 			unsigned char& operator[](std::size_t i) { return digits[i]; }
@@ -429,7 +436,7 @@ namespace Big_Number
 		BigNumber num = std::move(*this);
 		num.sign = true;
 		BigNumber q;
-		for (int i = 0; i <= initial_shift; ++i)
+		for (std::size_t i = 0; i <= initial_shift; ++i)
 		{
 			unsigned char q_digit = 0;
 			while (num >= denom)
