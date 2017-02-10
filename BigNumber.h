@@ -167,6 +167,16 @@ namespace Big_Number
 			return !is_even(bn);
 		}
 
+		friend bool is_positive(const BigNumber& bn)
+		{
+			return bn.sign;
+		}
+
+		friend bool is_negative(const BigNumber& bn)
+		{
+			return !is_positive(bn);
+		}
+
 		friend BigNumber operator^(const BigNumber& lhs, const BigNumber& rhs)
 		{
 			BigNumber ret = lhs;
